@@ -1,0 +1,7 @@
+env/
+.idea/
+data_cache/
+__pycache__/
+*.edf
+*.pkl
+*.h5
