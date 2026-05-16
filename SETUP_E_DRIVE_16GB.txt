@@ -1,0 +1,265 @@
+═══════════════════════════════════════════════════════════════════════════════
+  SETUP GUIDE: E: Drive + 16 GB RAM
+═══════════════════════════════════════════════════════════════════════════════
+
+YOUR SYSTEM:
+  ✓ C: drive   : 30-40 GB free (for cache & temporary files)
+  ✓ E: drive   : 165 GB free (CHB-MIT dataset + cache)
+  ✓ RAM        : 16 GB available
+  ✓ Dataset    : CHB-MIT full (~42 GB) on E: drive
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 1: DOWNLOAD THE CODE FILES
+═══════════════════════════════════════════════════════════════════════════════
+
+From the outputs folder, download these 5 files:
+  1. Model_training_PRODUCTION.ipynb  ← USE THIS (optimized for your setup)
+  2. app.py
+  3. requirements.txt
+  4. README.md
+  5. SETUP_E_DRIVE_16GB.txt (this file)
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 2: CREATE PROJECT FOLDER
+═══════════════════════════════════════════════════════════════════════════════
+
+Create: C:\seizure_project\
+
+Copy the 5 files above into C:\seizure_project\
+
+Directory structure:
+  C:\seizure_project\
+    ├── Model_training_PRODUCTION.ipynb
+    ├── app.py
+    ├── requirements.txt
+    ├── README.md
+    └── SETUP_E_DRIVE_16GB.txt
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 3: INSTALL PYTHON ENVIRONMENT
+═══════════════════════════════════════════════════════════════════════════════
+
+Open PowerShell and run:
+
+cd C:\seizure_project
+python -m venv env
+env\Scripts\activate
+pip install --upgrade pip
+pip install -r requirements.txt
+
+Wait for all libraries to install (5-10 minutes).
+
+Verify:
+  python -c "import tensorflow as tf; print(f'TensorFlow {tf.__version__} ✓')"
+  python -c "import mne; print(f'MNE {mne.__version__} ✓')"
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 4: VERIFY E: DRIVE FOLDER STRUCTURE
+═══════════════════════════════════════════════════════════════════════════════
+
+Your CHB-MIT dataset should look like this on E: drive:
+
+  E:\chb-mit-scalp-eeg-database-1.0.0\
+    ├── chb01\
+    │   ├── chb01_01.edf
+    │   ├── chb01_02.edf
+    │   ├── ...
+    │   └── chb01-summary.txt
+    ├── chb02\
+    ├── chb03\
+    └── ... (up to chb24)
+
+If your folder has a different name (e.g., "chbmit_data" or just "chbmit"),
+you'll update the path in the notebook (see Step 5).
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 5: CONFIGURE THE NOTEBOOK
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Open Jupyter:
+   jupyter notebook
+
+2. In your browser, click: Model_training_PRODUCTION.ipynb
+
+3. In CELL 1 (first code cell), update ONLY these two lines:
+
+   DATA_DRIVE = 'E'  # ← This is correct for you
+   
+   data_dir = os.path.join(DATA_DRIVE + ':', 'chb-mit-scalp-eeg-database-1.0.0')
+                    └── Change 'chb-mit-scalp-eeg-database-1.0.0' to match your
+                        actual folder name on E: drive
+
+Example: If your folder is E:\chbmit_dataset, change to:
+   data_dir = os.path.join(DATA_DRIVE + ':', 'chbmit_dataset')
+
+4. Leave all other cells UNCHANGED
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 6: RUN THE TRAINING
+═══════════════════════════════════════════════════════════════════════════════
+
+IMPORTANT: Click "Kernel → Restart & Run All" to run the entire notebook
+
+Do NOT click individual cell "Run" buttons — use "Run All" to ensure proper
+state and memory management.
+
+Expected timeline:
+  ✓ Cell 1-7 (loading): 20-30 minutes (reads all EDF files from E: drive)
+  ✓ Cell 8-12 (features): 10 minutes
+  ✓ Cell 13 (RF baseline): 5 minutes
+  ✓ Cell 14 (RF tuning): 15 minutes
+  ✓ Cell 15-17 (CNN): 20-30 minutes
+
+TOTAL: 60-90 minutes (first run only)
+
+Monitor memory in Task Manager:
+  → Should stay under 15 GB at all times
+  → If it spikes above 16 GB, Python will crash
+  → If this happens, restart and ensure no other heavy apps are running
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 7: WHAT GETS SAVED
+═══════════════════════════════════════════════════════════════════════════════
+
+After training completes, you'll have 5 files in C:\seizure_project\:
+
+  ✓ scaler.pkl              (RobustScaler — data normalization)
+  ✓ best_rf_tuned_model.pkl (Random Forest model — tuned hyperparameters)
+  ✓ advanced_model.keras    (1D-CNN model — trained with regularization)
+  ✓ model_metrics.pkl       (Performance metrics for dashboard)
+  ✓ training_history.pkl    (CNN training curves)
+
+These are what the Streamlit app needs to run.
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 8: LAUNCH THE DASHBOARD
+═══════════════════════════════════════════════════════════════════════════════
+
+After training finishes, in PowerShell:
+
+cd C:\seizure_project
+env\Scripts\activate
+streamlit run app.py
+
+Streamlit will open in your browser at: http://localhost:8501
+
+═══════════════════════════════════════════════════════════════════════════════
+WHAT THE CODE DOES (Key Features for Your Setup)
+═══════════════════════════════════════════════════════════════════════════════
+
+✓ Lazy Loading (preload=False)
+  → Reads EDF files slice-by-slice from E: drive, not all at once
+  → Stays within 16 GB RAM limit
+
+✓ Streaming Approach
+  → Processes one file at a time, frees memory immediately
+  → Never accumulates all data in RAM
+
+✓ SMOTE Applied (Class Imbalance)
+  → Upsamples seizure windows (minority class)
+  → Prevents model from learning to always predict "normal"
+  → Only applied to training data (not test)
+
+✓ GroupShuffleSplit (No Data Leakage)
+  → Ensures patient's data stays in EITHER train OR test
+  → Gives honest performance estimates
+
+✓ Regularization (Prevent Overfitting)
+  → L2 regularization on all layers
+  → Dropout in CNN
+  → Batch normalization
+  → Early stopping monitors validation loss
+  → Overfitting gap should be < 0.10
+
+✓ Two Models for Comparison
+  → Random Forest: Fast, interpretable baseline
+  → 1D-CNN: Learns temporal patterns, usually better
+
+═══════════════════════════════════════════════════════════════════════════════
+EXPECTED PERFORMANCE (Your setup, full dataset)
+═══════════════════════════════════════════════════════════════════════════════
+
+Random Forest (tuned):
+  Test Accuracy : 88-93%
+  Sensitivity   : 60-75% (seizure recall)
+  Specificity   : 95-98% (normal recall)
+  F1-score      : 0.55-0.72
+  ROC-AUC       : 0.82-0.90
+
+1D-CNN:
+  Test Accuracy : 90-95%
+  Sensitivity   : 72-85%
+  Specificity   : 96-99%
+  F1-score      : 0.68-0.80
+  ROC-AUC       : 0.88-0.95
+
+(CNN usually wins because it learns temporal patterns directly)
+
+═══════════════════════════════════════════════════════════════════════════════
+TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════════════
+
+Error: "No summary files found"
+  → Your data_dir path is wrong
+  → Check E: drive structure and update data_dir in Cell 1
+
+Error: "No EDF files found"
+  → Same issue — verify the path and folder name
+
+Memory Error / Computer Freezes
+  → Close other apps (Chrome, Outlook, etc.)
+  → The notebook is designed for 16 GB but needs some breathing room
+  → If still crashes, try restarting and running again
+
+MemoryError during SMOTE
+  → SMOTE is memory-intensive
+  → If this happens, set USE_SMOTE = False in the notebook
+  → The model will use class_weight instead (still handles imbalance)
+
+TensorFlow/CUDA warnings
+  → Safe to ignore — GPU is optional, CPU works fine
+
+═══════════════════════════════════════════════════════════════════════════════
+FOR YOUR PRESENTATION (2 PM)
+═══════════════════════════════════════════════════════════════════════════════
+
+Once models are trained, demo the Streamlit app:
+
+1. Upload a test EDF file (e.g., chb03_04.edf which has seizure at ~1440s)
+2. Use Manual Scanner to predict that specific window
+3. Switch to Live Feed, start at 1430s, watch it detect seizure in real-time
+4. Export prediction history as CSV
+
+Talking points:
+  ✓ Patient-aware splitting prevents overfitting
+  ✓ SMOTE handles severe class imbalance
+  ✓ Lazy loading allows processing of 42 GB dataset on 16 GB RAM
+  ✓ Two models showcase: hand-crafted features (RF) vs end-to-end (CNN)
+  ✓ Regularization prevents overfitting — see low overfitting gaps
+  ✓ Clinical relevance: sensitivity > accuracy (missing seizure is worse than false alarm)
+
+═══════════════════════════════════════════════════════════════════════════════
+QUICK CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+☐ Model_training_PRODUCTION.ipynb downloaded
+☐ app.py, requirements.txt, README.md downloaded
+☐ Folder created: C:\seizure_project\
+☐ All files copied to C:\seizure_project\
+☐ Virtual environment created and activated
+☐ requirements.txt installed (pip install -r requirements.txt)
+☐ data_dir path in Notebook Cell 1 matches your E: drive folder
+☐ E: drive has CHB-MIT dataset (42 GB)
+☐ C: drive has 30+ GB free (for cache)
+☐ Notebook run with "Kernel → Restart & Run All"
+☐ Training completes without errors
+☐ 5 model files saved (scaler.pkl, best_rf_tuned_model.pkl, etc.)
+☐ Streamlit app launches: streamlit run app.py
+☐ Dashboard works: upload EDF file, make predictions
+☐ Demo ready for 2 PM presentation
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Questions? Check the README.md for more details on models and dataset.
+
+Good luck with your presentation! 🚀
