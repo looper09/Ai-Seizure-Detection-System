@@ -233,7 +233,7 @@ except FileNotFoundError as e:
     model_error = str(e)
 
 # ─────────────────────────────────────────────
-# FEATURE EXTRACTION  (upgraded — matches notebook)
+# FEATURE EXTRACTION 
 # ─────────────────────────────────────────────
 def extract_features(window_flat, window_size=WINDOW_SIZE, sfreq=FS):
     """
@@ -265,14 +265,10 @@ def extract_features(window_flat, window_size=WINDOW_SIZE, sfreq=FS):
     return np.array(feats, dtype=np.float32)
 
 # ─────────────────────────────────────────────
-# EEG PREPROCESSING  (fixed — no full preload)
+# EEG PREPROCESSING 
 # ─────────────────────────────────────────────
 @st.cache_data(show_spinner=False)
 def preprocess_eeg(file_bytes, filename, start_second):
-    """
-    FIX: writes to a temp file so MNE can open lazily (no full RAM load).
-    Reads only the needed 5-second slice from disk.
-    """
     with tempfile.NamedTemporaryFile(suffix='.edf', delete=False) as tmp:
         tmp.write(file_bytes)
         tmp_path = tmp.name
@@ -283,6 +279,8 @@ def preprocess_eeg(file_bytes, filename, start_second):
         if not valid_picks:
             return None, None, 0
         raw.pick(valid_picks)
+        
+        raw.load_data()  
         raw.filter(l_freq=0.5, h_freq=40.0, method='fir', verbose=False)
 
         n_ch      = len(raw.ch_names)
@@ -292,9 +290,11 @@ def preprocess_eeg(file_bytes, filename, start_second):
         if end_s > raw.n_times:
             return None, None, n_ch
 
-        # ← KEY FIX: slice from disk, not full preload
+        # ← Slice from memory
         data, _  = raw[:, start_s:end_s]
-        window_flat = data.flatten().astype(np.float32)
+        
+        # ⚠️ CRITICAL MATRIX FLIP FIX (.T added here) ⚠️
+        window_flat = data.T.flatten().astype(np.float32)
 
         # Scale
         window_scaled = scaler.transform(window_flat.reshape(1, -1))[0]
@@ -320,8 +320,11 @@ def predict(window_scaled, features, n_ch, model_type):
     if TF_AVAILABLE and cnn_model:
         cnn_input = window_scaled.reshape(1, WINDOW_SIZE, n_ch)
         prob = float(cnn_model.predict(cnn_input, verbose=0)[0][0])
-        pred = 1 if prob > 0.5 else 0
-        conf = (prob if prob > 0.5 else 1 - prob) * 100
+        
+        # ⚠️ INCREASED SENSITIVITY FIX (Threshold lowered to 0.3) ⚠️
+        pred = 1 if prob > 0.30 else 0
+        conf = (prob if pred == 1 else 1 - prob) * 100
+        
         return pred, conf, prob * 100
 
     # Fallback to RF
@@ -396,7 +399,7 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### 👥 Developed by")
-    st.markdown("**Asad Ali Asim**  \n**Muhammad Daniyal Khan**  \nBSAI-IV")
+    st.markdown("**Asad Ali Asim** \n**Muhammad Daniyal Khan** \nBSAI-IV")
 
 # ─────────────────────────────────────────────
 # MAIN AREA
