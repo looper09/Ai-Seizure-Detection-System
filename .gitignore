@@ -1,7 +1,19 @@
+# Environments
 env/
-.idea/
-data_cache/
+venv/
+ENV/
+
+# Python cache files
 __pycache__/
-*.edf
-*.pkl
-*.h5
+*.py[cod]
+*$py.class
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Streamlit cache
+.streamlit/
+
+# OS generated files
+.DS_Store
+Thumbs.db
